@@ -1,93 +1,47 @@
 <!DOCTYPE html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Музей истории Петербурга 3D</title>
+<title>Музей истории Петербурга</title>
 <style>
-:root{--bg:#efe8d8;--fg:#2a2118;--card:#fffaf0;--ac:#7a2e3a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#f3ecdd;--fg:#2a1f14;--card:#fffaf0;--ac:#7a2e3a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151a20;--fg:#e9e2d3;--card:#1f2830;--ac:#c8606e}}
-html,body{margin:0;background:var(--bg);color:var(--fg);font-family:"Courier New",monospace}
-body{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px}
-h1{font-size:15px;margin:4px 0;text-align:center}
-#hall{font-size:13px;font-weight:bold;color:var(--ac)}
-canvas{width:100%;max-width:720px;image-rendering:pixelated;border:4px solid var(--ac);background:#000;touch-action:manipulation}
-#info{width:100%;max-width:720px;min-height:96px;background:var(--card);border:3px solid var(--ac);padding:8px;font-size:14px;line-height:1.4;box-sizing:border-box}
-#info b{color:var(--ac)}
-.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,56px);gap:6px}
-.pad button,#act{font:bold 22px "Courier New",monospace;background:var(--card);color:var(--fg);border:3px solid var(--ac);touch-action:manipulation;user-select:none}
-#act{padding:0 18px;height:58px;font-size:16px}
-.row{display:flex;gap:18px;align-items:center}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif}
+body{display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px;min-height:100vh;box-sizing:border-box}
+h1{font-size:16px;margin:4px 0;text-align:center}
+#ph{width:100%;max-width:720px;height:46vh;background:var(--card);border:3px solid var(--ac);display:flex;align-items:center;justify-content:center;overflow:hidden;box-sizing:border-box}
+#ph img{max-width:100%;max-height:100%;object-fit:contain}
+#ph .ph{font-size:56px;font-weight:bold;color:var(--ac)}
+#cap{font-weight:bold;font-size:17px;text-align:center}
+#txt{width:100%;max-width:720px;min-height:90px;background:var(--card);border:3px solid var(--ac);padding:10px;font-size:15px;line-height:1.45;box-sizing:border-box}
+.row{display:flex;gap:12px;align-items:center;justify-content:center}
+button{font:bold 20px system-ui;background:var(--card);color:var(--fg);border:3px solid var(--ac);padding:12px 22px;touch-action:manipulation}
+#read{background:var(--ac);color:#fff}
+small{opacity:.7;font-size:11px;text-align:center}
 </style></head><body>
-<h1>🏛 Музей истории Петербурга — 3D-прогулка по залам</h1>
-<div id="hall"></div>
-<canvas id="c" width="320" height="200"></canvas>
-<div id="info"></div>
-<div class="row">
-<div class="pad"><span></span><button data-k="F">▲</button><span></span><button data-k="L">↶</button><button data-k="B">▼</button><button data-k="R">↷</button></div>
-<button id="act">Читать</button>
-</div>
+<h1>🏛 Музей истории Санкт-Петербурга</h1>
+<div id="ph"></div>
+<div id="cap"></div>
+<div id="txt"></div>
+<div class="row"><button id="prev">◀</button><button id="read">Читать</button><button id="next">▶</button></div>
+<small id="n"></small>
+<small>Изображения: Wikipedia / Wikimedia Commons</small>
 <script>
-const RW=320,RH=200,cv=document.getElementById('c'),g=cv.getContext('2d'),info=document.getElementById('info'),hallEl=document.getElementById('hall');
-const MW=24,MH=12,M=[];
-for(let y=0;y<MH;y++){M.push([]);for(let x=0;x<MW;x++)M[y].push((x==0||y==0||x==MW-1||y==MH-1||x==7||x==16)?1:0)}
-[5,6].forEach(y=>{M[y][7]=0;M[y][16]=0});
 const E=[
-{x:3,y:0,yr:'1703',s:'ОСНОВАНИЕ',c:'#6a8aa8',n:'Основание города',t:'1703 год. На Заячьем острове заложена Петропавловская крепость. С этого года ведут историю Санкт-Петербурга.'},
-{x:3,y:11,yr:'1712',s:'СТОЛИЦА',c:'#7a9a6a',n:'Новая столица',t:'1712 год. Пётр I перенёс столицу России из Москвы в Петербург.'},
-{x:10,y:0,yr:'1721',s:'ИМПЕРИЯ',c:'#9a6a8a',n:'Российская империя',t:'1721 год. После Северной войны Пётр I принял титул императора, а Россия стала империей.'},
-{x:13,y:11,yr:'1825',s:'ДЕКАБРИСТЫ',c:'#8a5a4a',n:'Восстание декабристов',t:'14 (26) декабря 1825 года. Восстание на Сенатской площади. Его участников содержали в Петропавловской крепости.'},
-{x:13,y:0,yr:'1861',s:'РЕФОРМА',c:'#a89a5a',n:'Отмена крепостного права',t:'1861 год. Император Александр II подписал манифест об отмене крепостного права.'},
-{x:19,y:0,yr:'1914',s:'ПЕТРОГРАД',c:'#5a6a8a',n:'Петроград',t:'1914 год. В начале Первой мировой войны Петербург переименовали в Петроград.'},
-{x:19,y:11,yr:'1917',s:'РЕВОЛЮЦИЯ',c:'#a04a4a',n:'Революции 1917 года',t:'1917 год. В Петрограде произошли Февральская и Октябрьская революции.'},
-{x:23,y:5,yr:'1918',s:'В МОСКВУ',c:'#6a6a6a',n:'Столица возвращается в Москву',t:'1918 год. Правительство переехало в Москву, и Петроград перестал быть столицей. На этом заканчивается история, которую рассказывает экспозиция Комендантского дома (1703–1918).'}];
-E.forEach((e,i)=>{M[e.y][e.x]=2+i});
-function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
-const wallT=mk(64,64),wc=wallT.getContext('2d');
-wc.fillStyle='#d8cfb8';wc.fillRect(0,0,64,64);wc.fillStyle='#cbc1a8';for(let i=0;i<40;i++)wc.fillRect((i*37)%64,(i*17)%38,2,1);
-wc.fillStyle='#7a2e3a';wc.fillRect(0,40,64,24);wc.fillStyle='#d4a017';wc.fillRect(0,38,64,2);wc.fillStyle='#5a1e2a';wc.fillRect(0,56,64,8);
-const tex=E.map(e=>{const c=mk(64,64),k=c.getContext('2d');k.drawImage(wallT,0,0);
- k.fillStyle='#d4a017';k.fillRect(6,6,52,46);k.fillStyle=e.c;k.fillRect(9,9,46,40);k.fillStyle='rgba(0,0,0,.25)';k.fillRect(9,33,46,16);
- k.fillStyle='#fff';k.textAlign='center';k.font='bold 16px monospace';k.fillText(e.yr,32,28);k.font='bold 8px monospace';k.fillText(e.s,32,43);
- k.fillStyle='#d4a017';k.fillRect(24,54,16,3);return c});
-const ceilG=g.createLinearGradient(0,0,0,RH/2);ceilG.addColorStop(0,'#2a2320');ceilG.addColorStop(1,'#6a5d50');
-const floorG=g.createLinearGradient(0,RH/2,0,RH);floorG.addColorStop(0,'#4a3320');floorG.addColorStop(1,'#a67b45');
-let X=3.5,Y=6.5,A=-Math.PI/2;const keys={F:0,B:0,L:0,R:0,SL:0,SR:0};
-let ctr={v:0,pd:99},cur=null,last=undefined,open=0;
-function tryMove(dx,dy){const r=.22;if(M[Math.floor(Y)][Math.floor(X+dx+Math.sign(dx)*r)]==0)X+=dx;if(M[Math.floor(Y+dy+Math.sign(dy)*r)][Math.floor(X)]==0)Y+=dy}
-function render(){
- g.fillStyle=ceilG;g.fillRect(0,0,RW,RH/2);g.fillStyle=floorG;g.fillRect(0,RH/2,RW,RH/2);
- const dX=Math.cos(A),dY=Math.sin(A),pX=-dY*.66,pY=dX*.66;
- for(let x=0;x<RW;x++){
-  const cx=2*x/RW-1,rx=dX+pX*cx,ry=dY+pY*cx;let mx=Math.floor(X),my=Math.floor(Y);
-  const ddx=Math.abs(1/(rx||1e-9)),ddy=Math.abs(1/(ry||1e-9));let sx,sy,sdx,sdy;
-  if(rx<0){sx=-1;sdx=(X-mx)*ddx}else{sx=1;sdx=(mx+1-X)*ddx}
-  if(ry<0){sy=-1;sdy=(Y-my)*ddy}else{sy=1;sdy=(my+1-Y)*ddy}
-  let side=0,hit=0;
-  while(!hit){if(sdx<sdy){sdx+=ddx;mx+=sx;side=0}else{sdy+=ddy;my+=sy;side=1}hit=M[my][mx]}
-  let pd=side==0?sdx-ddx:sdy-ddy;if(pd<.05)pd=.05;
-  let wx=side==0?Y+pd*ry:X+pd*rx;wx-=Math.floor(wx);let tx=Math.floor(wx*64);
-  if((side==0&&rx>0)||(side==1&&ry<0))tx=63-tx;
-  const lh=Math.round(RH/pd),top=Math.round((RH-lh)/2);
-  g.drawImage(hit>=2?tex[hit-2]:wallT,tx,0,1,64,x,top,1,lh);
-  g.fillStyle='rgba(0,0,0,'+Math.min(.7,pd/16+(side?.16:0))+')';g.fillRect(x,top,1,lh);
-  if(x==RW>>1)ctr={v:hit,pd:pd};
- }
- for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const v=M[y][x];if(!v)continue;g.fillStyle=v>=2?'#d4a017':'rgba(255,255,255,.55)';g.fillRect(4+x*4,4+y*4,4,4)}
- g.fillStyle='#ff3030';g.fillRect(4+X*4-1,4+Y*4-1,3,3);g.fillRect(4+(X+dX*1.2)*4,4+(Y+dY*1.2)*4,1,1);
-}
-function hallName(){return X<7?'Зал I · Основание города':X<16?'Зал II · Империя и XIX век':'Зал III · 1914–1918'}
-function read(){if(!cur)return;open=1;info.innerHTML='<b>'+cur.yr+' — '+cur.n+'</b><br>'+cur.t}
-function upd(){cur=ctr.v>=2&&ctr.pd<2.8?E[ctr.v-2]:null;
- if(cur!==last){last=cur;open=0;info.innerHTML=cur?'👉 Перед тобой: <b>'+cur.yr+' — '+cur.n+'</b>. Нажми «Читать».':'Иди вперёд (стрелки / W S), поворот — A D или ↶ ↷. Подойди близко к картине на стене и нажми «Читать» (пробел / Enter). Золотые клетки на мини-карте — экспонаты.'}
- const h=hallName();if(hallEl.textContent!==h)hallEl.textContent=h}
-let t0=performance.now();
-function loop(t){const dt=Math.min(.05,(t-t0)/1000);t0=t;
- A+=(keys.R-keys.L)*2.2*dt;const s=(keys.F-keys.B)*2.6*dt,st=(keys.SR-keys.SL)*2.2*dt;
- if(s||st)tryMove(Math.cos(A)*s-Math.sin(A)*st,Math.sin(A)*s+Math.cos(A)*st);
- render();upd();requestAnimationFrame(loop)}
-const km={ArrowUp:'F',w:'F',W:'F',ArrowDown:'B',s:'B',S:'B',ArrowLeft:'L',a:'L',A:'L',ArrowRight:'R',d:'R',D:'R',q:'SL',Q:'SL',e:'SR',E:'SR'};
-addEventListener('keydown',e=>{if(km[e.key]){e.preventDefault();keys[km[e.key]]=1}else if(e.key===' '||e.key==='Enter'){e.preventDefault();read()}});
-addEventListener('keyup',e=>{if(km[e.key])keys[km[e.key]]=0});
-document.querySelectorAll('[data-k]').forEach(b=>{const k=b.dataset.k;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=1});['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,()=>keys[k]=0))});
-document.getElementById('act').onclick=read;cv.addEventListener('click',read);
-requestAnimationFrame(loop);
+{yr:'1703',n:'Основание города',t:'1703 год. На Заячьем острове заложена Петропавловская крепость. С этого года ведут историю Санкт-Петербурга.'},
+{yr:'1712',n:'Новая столица',t:'1712 год. Пётр I перенёс столицу России из Москвы в Петербург.'},
+{yr:'1721',n:'Российская империя',t:'1721 год. После Северной войны Пётр I принял титул императора, а Россия стала империей.'},
+{yr:'1825',n:'Восстание декабристов',t:'14 (26) декабря 1825 года. Восстание на Сенатской площади. Его участников содержали в Петропавловской крепости.'},
+{yr:'1861',n:'Отмена крепостного права',t:'1861 год. Император Александр II подписал манифест об отмене крепостного права.'},
+{yr:'1914',n:'Петроград',t:'1914 год. В начале Первой мировой войны Петербург переименовали в Петроград.'},
+{yr:'1917',n:'Революции 1917 года',t:'1917 год. В Петрограде произошли Февральская и Октябрьская революции.'},
+{yr:'1918',n:'Столица возвращается в Москву',t:'1918 год. Правительство переехало в Москву, и Петроград перестал быть столицей. На этом заканчивается история, которую рассказывает экспозиция Комендантского дома (1703–1918).'}];
+let i=0;const $=id=>document.getElementById(id);
+function show(){const e=E[i];$('ph').innerHTML='';const im=new Image();im.alt=e.n;
+ im.onerror=()=>{$('ph').innerHTML='<div class="ph">'+e.yr+'</div>'};im.src='img/'+(i+1)+'.jpg';$('ph').appendChild(im);
+ $('cap').textContent=e.yr+' — '+e.n;$('txt').textContent='Нажми «Читать», чтобы узнать подробнее.';$('n').textContent=(i+1)+' / '+E.length}
+const go=d=>{i=(i+d+E.length)%E.length;show()};
+$('prev').onclick=()=>go(-1);$('next').onclick=()=>go(1);$('read').onclick=()=>{$('txt').textContent=E[i].t};
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')go(-1);else if(e.key==='ArrowRight')go(1);else if(e.key===' '||e.key==='Enter')$('read').click()});
+let sx=null;addEventListener('touchstart',e=>sx=e.touches[0].clientX);addEventListener('touchend',e=>{if(sx!==null){const d=e.changedTouches[0].clientX-sx;if(Math.abs(d)>50)go(d<0?1:-1);sx=null}});
+show();
 </script></body></html>

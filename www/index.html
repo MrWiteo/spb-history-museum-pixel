@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Пиксельный музей истории Петербурга</title>
+<style>
+:root{--bg:#efe8d8;--fg:#2a2118;--card:#fffaf0;--ac:#2f5f8a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a20;--fg:#e9e2d3;--card:#1f2830;--ac:#6fa8d8}}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:"Courier New",monospace}
+body{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px}
+h1{font-size:16px;margin:4px 0;text-align:center}
+canvas{width:100%;max-width:720px;image-rendering:pixelated;border:4px solid var(--ac);background:#000}
+#info{width:100%;max-width:720px;min-height:96px;background:var(--card);border:3px solid var(--ac);padding:8px;font-size:14px;line-height:1.4;box-sizing:border-box}
+#info b{color:var(--ac)}
+.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,56px);gap:6px}
+.pad button,#act{font:bold 22px "Courier New",monospace;background:var(--card);color:var(--fg);border:3px solid var(--ac);touch-action:manipulation}
+#act{padding:0 18px;height:58px;font-size:16px}
+.row{display:flex;gap:18px;align-items:center}
+</style></head><body>
+<h1>🏰 Музей истории Санкт-Петербурга — Петропавловская крепость</h1>
+<canvas id="c" width="480" height="352"></canvas>
+<div id="info"></div>
+<div class="row">
+<div class="pad"><span></span><button data-d="u">▲</button><span></span><button data-d="l">◀</button><button data-d="d">▼</button><button data-d="r">▶</button></div>
+<button id="act">Читать</button>
+</div>
+<script>
+const T=16,W=30,H=22,cv=document.getElementById('c'),g=cv.getContext('2d'),info=document.getElementById('info');
+const B=[
+{n:'Петропавловский собор',x:13,y:8,w:4,h:5,c:['#e8dcc0','#d4a017'],spire:1,t:'Усыпальница семьи Романовых и одна из главных доминант города. Собор входит в выставочный комплекс Государственного музея истории Санкт-Петербурга.'},
+{n:'Комендантский дом',x:20,y:8,w:4,h:3,c:['#d9a860','#8a3a2a'],t:'Раньше здесь жил смотритель крепости, а теперь здесь экспозиция «История Санкт-Петербурга — Петрограда» (с 1703 по 1918 год). В доме также работала Следственная комиссия.'},
+{n:'Инженерный дом',x:7,y:8,w:4,h:3,c:['#e6d29a','#7a4a3a'],t:'Одно из зданий выставочного комплекса музея в Петропавловской крепости, где проходят выставки.'},
+{n:'Ботный дом',x:9,y:13,w:3,h:2,c:['#cbb58a','#6a4a3a'],t:'Здесь раньше хранился ботик Петра I. Сегодня здание входит в музейный комплекс крепости.'},
+{n:'Великокняжеская усыпальница',x:19,y:14,w:3,h:2,c:['#ddd5c0','#a89a70'],t:'Одно из зданий музейного комплекса Петропавловской крепости. Находится рядом с собором.'},
+{n:'Секретный дом (Алексеевский равелин)',x:14,y:17,w:3,h:2,c:['#8a8070','#4a4038'],t:'Алексеевский равелин сначала был оборонительным сооружением, а затем стал строгой политической тюрьмой. В 1769 году в нём построили деревянную тюрьму, а в 1797-м её заменил каменный «Секретный дом». Расположение на схеме условное.'},
+{n:'Трубецкой бастион',x:6,y:15,w:3,h:2,c:['#9a8f7a','#5a4a3a'],t:'Тюрьма Трубецкого бастиона входит в музейный комплекс. В крепости в разные годы сидели декабристы, Чернышевский, Радищев и другие.'},
+{n:'Нарышкин бастион',x:23,y:16,w:2,h:2,c:['#a89c84','#3a3a3a'],t:'С Нарышкина бастиона стреляет пушка — традиционный полуденный выстрел. С 2000 года залп поручают почётным гостям Петербурга.'}];
+const S={n:'О музее',t:'Основная часть фондов Государственного музея истории Санкт-Петербурга находится в Петропавловской крепости на Заячьем острове. Её заложили в 1703 году, с неё началась история города. Крепость никогда не участвовала в боях. В советское время её хотели снести и построить на этом месте стадион. Блокадная экспозиция находится в Особняке Румянцева — филиале музея. Карта здесь схематичная.'};
+const tl=(x,y)=>{if(x<0||y<0||x>=W||y>=H)return'w';if(x==15&&(y<=2||y>=20))return'p';const v=((x-15)/13)**2+((y-11)/9.5)**2;return v>1?'w':v>.8?'b':'g'};
+const inB=(b,x,y)=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h;
+const solid=(x,y)=>{const t=tl(x,y);return t=='w'||t=='b'||B.some(b=>inB(b,x,y))};
+let p={x:15,y:4,f:0},cur=null,held=null,tm=null,open=0;
+function dist(b,x,y){return Math.max(b.x-x,0,x-(b.x+b.w-1))+Math.max(b.y-y,0,y-(b.y+b.h-1))}
+function near(){let best=null,bd=9;B.forEach(b=>{const dx=Math.max(b.x-p.x,0,p.x-(b.x+b.w-1)),dy=Math.max(b.y-p.y,0,p.y-(b.y+b.h-1));if(dx<=1&&dy<=1&&dx+dy<bd){bd=dx+dy;best=b}});return best}
+function hint(){if(cur&&!open)info.innerHTML='👉 Рядом: <b>'+cur.n+'</b> — нажми «Читать».';else if(!cur&&!open)info.innerHTML='Ходи по крепости. Подойди к зданию и нажми «Читать» (E / пробел) или тапни по нему. Тап по центральной площади — «О музее».'}
+function read(b){b=b||cur||null;if(!b)return;open=1;info.innerHTML='<b>'+b.n+'</b><br>'+b.t}
+function mv(d){const v={u:[0,-1],d:[0,1],l:[-1,0],r:[1,0]}[d];const nx=p.x+v[0],ny=p.y+v[1];p.f^=1;if(!solid(nx,ny)){p.x=nx;p.y=ny}const c=near();if(c!==cur)open=0;cur=c;hint();draw()}
+function draw(){
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){const t=tl(x,y),X=x*T,Y=y*T;
+  if(t=='w'){g.fillStyle='#2f6f9f';g.fillRect(X,Y,T,T);g.fillStyle='#4a8ab8';if((x+y)%3==0)g.fillRect(X+3,Y+7,8,2)}
+  else if(t=='b'){g.fillStyle='#8f846e';g.fillRect(X,Y,T,T);g.fillStyle='#b5aa92';g.fillRect(X,Y,T,4);g.fillStyle='#6f6552';g.fillRect(X,Y+T-3,T,3)}
+  else if(t=='p'){g.fillStyle='#8b5a2b';g.fillRect(X,Y,T,T);g.fillStyle='#6a4220';g.fillRect(X,Y+7,T,2)}
+  else{g.fillStyle=(x+y)%2?'#cdbf98':'#c4b68e';g.fillRect(X,Y,T,T);if(x==15||y==11){g.fillStyle='#a89c78';g.fillRect(X+5,Y+5,6,6)}}}
+ B.forEach(b=>{const X=b.x*T,Y=b.y*T,w=b.w*T,h=b.h*T;
+  if(b.spire){g.fillStyle='#d4a017';g.fillRect(X+w/2-2,Y-18,4,18);g.fillRect(X+w/2-1,Y-24,2,6)}
+  g.fillStyle=b.c[0];g.fillRect(X,Y,w,h);g.fillStyle=b.c[1];g.fillRect(X,Y,w,7);
+  g.fillStyle='#3a2a1a';g.fillRect(X+w/2-3,Y+h-8,6,8);
+  g.fillStyle='#e8f0f8';for(let i=1;i<b.w*2;i+=2){g.fillRect(X+i*8-2,Y+10,4,4)}
+  if(cur===b){g.strokeStyle='#fff';g.strokeRect(X-1,Y-1,w+2,h+2)}});
+ g.fillStyle='#555';g.fillRect(15*T+2,11*T+8,12,8);g.fillStyle='#d8d0c0';g.fillRect(15*T+1,11*T+3,14,6);
+ const x=p.x*T,y=p.y*T;
+ g.fillStyle='#2a1a10';g.fillRect(x+4,y+1,8,3);g.fillStyle='#f0c8a0';g.fillRect(x+5,y+3,6,4);
+ g.fillStyle='#a02a2a';g.fillRect(x+4,y+7,8,5);g.fillStyle='#222';g.fillRect(x+4+(p.f?0:3),y+12,4,3);
+ g.fillStyle='#222';g.fillRect(x+6,y+5,1,1);g.fillRect(x+9,y+5,1,1)}
+const km={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r',w:'u',s:'d',a:'l',d:'r',W:'u',S:'d',A:'l',D:'r'};
+function go(d){stop();held=d;mv(d);tm=setInterval(()=>mv(held),140)}
+function stop(){clearInterval(tm);held=null}
+addEventListener('keydown',e=>{if(km[e.key]){e.preventDefault();if(held!==km[e.key])go(km[e.key])}else if(['e','E',' ','Enter'].includes(e.key)){e.preventDefault();read()}});
+addEventListener('keyup',e=>{if(km[e.key])stop()});
+document.querySelectorAll('[data-d]').forEach(b=>{b.addEventListener('pointerdown',e=>{e.preventDefault();go(b.dataset.d)});['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,stop))});
+document.getElementById('act').onclick=()=>read();
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect(),tx=Math.floor((e.clientX-r.left)/r.width*W),ty=Math.floor((e.clientY-r.top)/r.height*H);const h=B.find(b=>inB(b,tx,ty))||(tx>=14&&tx<=16&&ty==11?S:null);if(h)read(h)});
+cur=near();hint();draw();
+</script></body></html>
